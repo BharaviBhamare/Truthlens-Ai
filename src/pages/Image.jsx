@@ -1,18 +1,22 @@
 import { useState } from "react";
 
+const API = "http://localhost:8000";
+
 function Image() {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleFileChange = (e) => {
-    const selected = e.target.files[0];
+    const selected = e.target.files?.[0];
 
     if (!selected) return;
 
     setFile(selected);
     setResult(null);
+    setError("");
 
     const url = URL.createObjectURL(selected);
     setPreview(url);
@@ -20,24 +24,28 @@ function Image() {
 
   const verifyImage = async () => {
     if (!file) {
-      alert("Please select an image first.");
+      setError("Please select an image first.");
       return;
     }
 
     setLoading(true);
     setResult(null);
+    setError("");
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/verify-image",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const response = await fetch(`${API}/verify-image`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Backend returned HTTP ${response.status}`
+        );
+      }
 
       const data = await response.json();
 
@@ -46,8 +54,13 @@ function Image() {
       }
 
       setResult(data);
-    } catch (error) {
-      alert("Unable to analyze image: " + error.message);
+    } catch (err) {
+      console.error("Image verification error:", err);
+
+      setError(
+        "Unable to connect to the TruthLens backend. " +
+        "Make sure FastAPI is running on port 8000."
+      );
     } finally {
       setLoading(false);
     }
@@ -57,26 +70,20 @@ function Image() {
     setFile(null);
     setPreview("");
     setResult(null);
+    setError("");
   };
 
   return (
     <div style={styles.page}>
-
-      {/* HEADER */}
-
       <div style={styles.header}>
         <div>
-          <div style={styles.eyebrow}>
-            TRUTHLENS AI
-          </div>
+          <div style={styles.eyebrow}>TRUTHLENS AI</div>
 
-          <h1 style={styles.title}>
-            Image Forensics
-          </h1>
+          <h1 style={styles.title}>Image Forensics</h1>
 
           <p style={styles.subtitle}>
-            Examine images for manipulation indicators,
-            metadata anomalies and pixel-level patterns.
+            Examine images for metadata anomalies, pixel
+            distribution and manipulation indicators.
           </p>
         </div>
 
@@ -85,47 +92,24 @@ function Image() {
         </div>
       </div>
 
-
-      {/* MAIN AREA */}
-
-      <div style={styles.mainGrid}>
-
-        {/* IMAGE PREVIEW */}
-
+      <div style={styles.grid}>
+        {/* PREVIEW */}
         <div style={styles.card}>
+          <h2 style={styles.cardTitle}>Image Preview</h2>
 
-          <div style={styles.cardHeader}>
-            <div>
-              <h2 style={styles.cardTitle}>
-                Image Preview
-              </h2>
-
-              <p style={styles.cardSubtitle}>
-                Review the uploaded image before analysis.
-              </p>
-            </div>
-          </div>
-
+          <p style={styles.subtitleSmall}>
+            Review the uploaded image before analysis.
+          </p>
 
           {!preview ? (
+            <label style={styles.upload}>
+              <div style={{ fontSize: 55 }}>🖼️</div>
 
-            <label style={styles.uploadArea}>
+              <h3>Upload an image</h3>
 
-              <div style={styles.uploadIcon}>
-                🖼️
-              </div>
+              <p>Click to browse your computer</p>
 
-              <h3>
-                Upload an image
-              </h3>
-
-              <p>
-                Click here to browse your computer
-              </p>
-
-              <span>
-                JPG · JPEG · PNG · WEBP
-              </span>
+              <span>JPG · JPEG · PNG · WEBP</span>
 
               <input
                 type="file"
@@ -133,60 +117,36 @@ function Image() {
                 onChange={handleFileChange}
                 style={{ display: "none" }}
               />
-
             </label>
-
           ) : (
-
-            <div style={styles.imageContainer}>
-
+            <div style={styles.previewBox}>
               <img
                 src={preview}
-                alt="Uploaded media"
-                style={styles.image}
+                alt="Uploaded"
+                style={styles.preview}
               />
-
             </div>
-
           )}
-
         </div>
 
-
         {/* FILE INFORMATION */}
-
         <div style={styles.card}>
+          <h2 style={styles.cardTitle}>File Information</h2>
 
-          <h2 style={styles.cardTitle}>
-            File Information
-          </h2>
-
-          <p style={styles.cardSubtitle}>
+          <p style={styles.subtitleSmall}>
             Technical information about the uploaded file.
           </p>
 
-
           {!file ? (
-
             <div style={styles.empty}>
-              <div style={styles.emptyIcon}>
-                📁
-              </div>
-
-              <p>
-                Upload an image to view its details.
-              </p>
+              <div style={{ fontSize: 45 }}>📁</div>
+              <p>Select an image to begin.</p>
             </div>
-
           ) : (
+            <>
+              <div style={{ fontSize: 40 }}>🖼️</div>
 
-            <div>
-
-              <div style={styles.fileIcon}>
-                🖼
-              </div>
-
-              <h3 style={styles.fileName}>
+              <h3 style={{ wordBreak: "break-word" }}>
                 {file.name}
               </h3>
 
@@ -197,215 +157,127 @@ function Image() {
 
               <Info
                 label="File size"
-                value={
-                  (file.size / 1024).toFixed(1) + " KB"
-                }
+                value={`${(file.size / 1024).toFixed(1)} KB`}
               />
 
               <Info
-                label="Status"
-                value="Ready"
+                label="Connection"
+                value="FastAPI :8000"
               />
-
 
               <button
                 onClick={verifyImage}
                 disabled={loading}
-                style={styles.analyzeButton}
+                style={styles.button}
               >
                 {loading
-                  ? "Analyzing Image..."
+                  ? "Analyzing..."
                   : "Analyze Image"}
               </button>
 
-
               <button
                 onClick={removeImage}
-                style={styles.removeButton}
+                style={styles.remove}
               >
                 Remove Image
               </button>
-
-            </div>
-
+            </>
           )}
-
         </div>
-
       </div>
 
+      {/* ERROR */}
+      {error && (
+        <div style={styles.error}>
+          <strong>Connection Error</strong>
+
+          <p style={{ marginBottom: 0 }}>
+            {error}
+          </p>
+
+          <p style={{ marginBottom: 0 }}>
+            Backend:{" "}
+            <code>http://localhost:8000</code>
+          </p>
+        </div>
+      )}
 
       {/* SCANNING */}
-
       {loading && (
-
         <div style={styles.scanning}>
-
           <div style={styles.spinner}></div>
 
           <div>
-            <h3 style={{ margin: 0 }}>
-              Running forensic analysis
-            </h3>
+            <strong>Running forensic analysis</strong>
 
-            <p style={{ margin: "5px 0 0", color: "#64748b" }}>
+            <p style={{ margin: "5px 0 0" }}>
               Inspecting metadata, pixel distribution
               and image structure...
             </p>
           </div>
-
         </div>
-
       )}
 
-
       {/* RESULT */}
-
       {result && (
-
-        <div style={styles.resultCard}>
-
-          <div style={styles.resultHeader}>
-
+        <div style={styles.result}>
+          <div style={styles.resultTop}>
             <div>
               <div style={styles.eyebrow}>
                 FORENSIC REPORT
               </div>
 
-              <h2 style={styles.resultTitle}>
-                Analysis Complete
-              </h2>
+              <h2>Analysis Complete</h2>
             </div>
 
-            <div
-              style={{
-                ...styles.statusBadge,
-                background:
-                  result.risk_level === "LOW"
-                    ? "#ecfdf5"
-                    : result.risk_level === "MEDIUM"
-                    ? "#fffbeb"
-                    : "#fef2f2",
-
-                color:
-                  result.risk_level === "LOW"
-                    ? "#15803d"
-                    : result.risk_level === "MEDIUM"
-                    ? "#b45309"
-                    : "#b91c1c",
-              }}
-            >
+            <div style={styles.risk}>
               {result.risk_level} RISK
             </div>
-
           </div>
 
-
-          {/* SCORE */}
-
-          <div style={styles.scoreSection}>
-
-            <div
-              style={{
-                ...styles.scoreCircle,
-
-                borderColor:
-                  result.authenticity_score >= 80
-                    ? "#16a34a"
-                    : result.authenticity_score >= 60
-                    ? "#f59e0b"
-                    : "#dc2626",
-              }}
-            >
-
+          <div style={styles.scoreRow}>
+            <div style={styles.score}>
               <strong>
                 {result.authenticity_score}%
               </strong>
 
-              <span>
-                Authenticity
-              </span>
-
+              <span>Authenticity</span>
             </div>
-
 
             <div>
+              <h2>{result.status}</h2>
 
-              <h2 style={{ marginBottom: 8 }}>
-                {result.status}
-              </h2>
-
-              <p style={styles.cardSubtitle}>
-                The score is calculated from the
-                available forensic indicators.
+              <p style={styles.subtitleSmall}>
+                Score calculated from available forensic
+                indicators.
               </p>
-
             </div>
-
           </div>
 
+          <h3>Forensic Indicators</h3>
 
-          {/* INDICATORS */}
-
-          <h3>
-            Forensic Indicators
-          </h3>
-
-          <div style={styles.findingsGrid}>
-
+          <div style={styles.findings}>
             {result.findings?.map((item, index) => (
-
-              <div
-                key={index}
-                style={styles.finding}
-              >
-
-                <div
-                  style={{
-                    ...styles.findingIcon,
-
-                    background:
-                      item.severity === "good"
-                        ? "#ecfdf5"
-                        : "#fff7ed",
-
-                    color:
-                      item.severity === "good"
-                        ? "#15803d"
-                        : "#c2410c",
-                  }}
-                >
+              <div style={styles.finding} key={index}>
+                <div style={styles.findingIcon}>
                   {item.severity === "good"
                     ? "✓"
                     : "!"}
                 </div>
 
                 <div>
+                  <strong>{item.name}</strong>
 
-                  <strong>
-                    {item.name}
-                  </strong>
-
-                  <p style={styles.findingText}>
+                  <p style={{ margin: "5px 0 0" }}>
                     {item.status}
                   </p>
-
                 </div>
-
               </div>
-
             ))}
-
           </div>
 
-
-          {/* TECHNICAL DETAILS */}
-
           <div style={styles.technical}>
-
-            <h3>
-              Technical Details
-            </h3>
+            <h3>Technical Details</h3>
 
             <Info
               label="Dimensions"
@@ -418,65 +290,52 @@ function Image() {
             />
 
             <Info
-              label="Color mode"
+              label="Color Mode"
               value={result.color_mode}
             />
 
             <Info
-              label="Pixel entropy"
+              label="Pixel Entropy"
               value={result.entropy}
             />
 
             <Info
-              label="Metadata fields"
+              label="Metadata Fields"
               value={result.metadata_count}
             />
 
             <Info
-              label="File fingerprint"
+              label="File Fingerprint"
               value={result.file_hash}
             />
-
           </div>
-
 
           <div style={styles.note}>
-            <strong>Note:</strong>{" "}
+            <strong>Important:</strong>{" "}
             This is a forensic risk assessment.
-            It should not be treated as a guaranteed
-            determination of whether an image was
-            generated by AI.
+            It is not a guaranteed AI-generated-image
+            detector.
           </div>
-
         </div>
-
       )}
-
     </div>
   );
 }
 
-
-/* INFO COMPONENT */
-
 function Info({ label, value }) {
   return (
-    <div style={styles.infoRow}>
+    <div style={styles.info}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
   );
 }
 
-
-/* STYLES */
-
 const styles = {
-
   page: {
     minHeight: "100vh",
     background: "#f4f8fc",
-    padding: "50px 7%",
+    padding: "45px 7%",
     color: "#172033",
     fontFamily: "Inter, Arial, sans-serif",
   },
@@ -484,211 +343,189 @@ const styles = {
   header: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: "40px",
+    marginBottom: 35,
   },
 
   eyebrow: {
     color: "#2563eb",
-    fontSize: "12px",
-    fontWeight: "800",
-    letterSpacing: "2px",
-    marginBottom: "8px",
+    fontSize: 12,
+    fontWeight: 800,
+    letterSpacing: 2,
   },
 
   title: {
-    fontSize: "42px",
-    margin: 0,
-    marginBottom: "10px",
+    fontSize: 42,
+    margin: "8px 0",
   },
 
   subtitle: {
     color: "#64748b",
-    maxWidth: "680px",
     lineHeight: 1.6,
+  },
+
+  subtitleSmall: {
+    color: "#64748b",
+    fontSize: 14,
+    lineHeight: 1.5,
   },
 
   badge: {
     background: "#eff6ff",
     color: "#2563eb",
     padding: "10px 15px",
-    borderRadius: "20px",
-    fontSize: "12px",
-    fontWeight: "700",
+    borderRadius: 20,
+    height: "fit-content",
+    fontWeight: 700,
+    fontSize: 12,
   },
 
-  mainGrid: {
+  grid: {
     display: "grid",
     gridTemplateColumns: "2fr 1fr",
-    gap: "25px",
+    gap: 25,
   },
 
   card: {
     background: "#fff",
-    borderRadius: "20px",
-    padding: "28px",
     border: "1px solid #e2e8f0",
-    boxShadow:
-      "0 12px 35px rgba(15,23,42,.05)",
+    borderRadius: 20,
+    padding: 28,
+    boxShadow: "0 10px 30px rgba(15,23,42,.05)",
   },
 
   cardTitle: {
     margin: 0,
-    fontSize: "20px",
   },
 
-  cardSubtitle: {
-    color: "#64748b",
-    fontSize: "14px",
-    lineHeight: 1.6,
-  },
-
-  uploadArea: {
-    height: "400px",
+  upload: {
+    height: 390,
     border: "2px dashed #cbd5e1",
-    borderRadius: "16px",
+    borderRadius: 16,
     background: "#f8fafc",
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
     cursor: "pointer",
+    marginTop: 20,
   },
 
-  uploadIcon: {
-    fontSize: "58px",
-    marginBottom: "15px",
-  },
-
-  imageContainer: {
-    height: "400px",
-    background: "#0f172a",
-    borderRadius: "16px",
-    overflow: "hidden",
+  previewBox: {
+    height: 390,
+    background: "#111827",
+    borderRadius: 16,
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
+    marginTop: 20,
   },
 
-  image: {
+  preview: {
     maxWidth: "100%",
     maxHeight: "100%",
     objectFit: "contain",
   },
 
   empty: {
-    marginTop: "80px",
     textAlign: "center",
     color: "#94a3b8",
+    marginTop: 80,
   },
 
-  emptyIcon: {
-    fontSize: "45px",
-  },
-
-  fileIcon: {
-    fontSize: "42px",
-    marginTop: "25px",
-  },
-
-  fileName: {
-    wordBreak: "break-word",
-    fontSize: "16px",
-    marginBottom: "20px",
-  },
-
-  infoRow: {
+  info: {
     display: "flex",
     justifyContent: "space-between",
-    gap: "15px",
-    padding: "13px 0",
+    gap: 15,
+    padding: "12px 0",
     borderBottom: "1px solid #eef2f7",
-    fontSize: "13px",
+    fontSize: 13,
   },
 
-  analyzeButton: {
+  button: {
     width: "100%",
-    marginTop: "25px",
-    padding: "14px",
+    marginTop: 25,
+    padding: 14,
+    border: 0,
+    borderRadius: 10,
     background: "#2563eb",
     color: "#fff",
-    border: "none",
-    borderRadius: "10px",
-    fontSize: "15px",
-    fontWeight: "700",
+    fontWeight: 700,
     cursor: "pointer",
   },
 
-  removeButton: {
+  remove: {
     width: "100%",
-    marginTop: "10px",
-    padding: "12px",
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 10,
     background: "#fff",
-    color: "#64748b",
     border: "1px solid #cbd5e1",
-    borderRadius: "10px",
     cursor: "pointer",
+  },
+
+  error: {
+    marginTop: 25,
+    padding: 20,
+    background: "#fef2f2",
+    border: "1px solid #fecaca",
+    borderRadius: 14,
+    color: "#991b1b",
   },
 
   scanning: {
-    marginTop: "25px",
-    padding: "22px",
+    marginTop: 25,
+    padding: 22,
     background: "#eff6ff",
-    border: "1px solid #bfdbfe",
-    borderRadius: "15px",
+    borderRadius: 15,
     display: "flex",
+    gap: 18,
     alignItems: "center",
-    gap: "18px",
+    color: "#334155",
   },
 
   spinner: {
-    width: "30px",
-    height: "30px",
+    width: 28,
+    height: 28,
     border: "3px solid #bfdbfe",
     borderTop: "3px solid #2563eb",
     borderRadius: "50%",
-    animation: "spin 1s linear infinite",
   },
 
-  resultCard: {
-    marginTop: "30px",
+  result: {
+    marginTop: 30,
     background: "#fff",
-    padding: "32px",
-    borderRadius: "20px",
+    padding: 32,
+    borderRadius: 20,
     border: "1px solid #e2e8f0",
-    boxShadow:
-      "0 12px 35px rgba(15,23,42,.05)",
   },
 
-  resultHeader: {
+  resultTop: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
   },
 
-  resultTitle: {
-    margin: 0,
-    fontSize: "28px",
-  },
-
-  statusBadge: {
+  risk: {
+    background: "#eff6ff",
+    color: "#2563eb",
     padding: "10px 16px",
-    borderRadius: "20px",
-    fontSize: "12px",
-    fontWeight: "800",
+    borderRadius: 20,
+    fontWeight: 800,
+    fontSize: 12,
   },
 
-  scoreSection: {
+  scoreRow: {
     display: "flex",
     alignItems: "center",
-    gap: "30px",
-    padding: "35px 0",
+    gap: 30,
+    padding: "30px 0",
   },
 
-  scoreCircle: {
-    width: "155px",
-    height: "155px",
-    border: "10px solid",
+  score: {
+    width: 145,
+    height: 145,
+    border: "9px solid #2563eb",
     borderRadius: "50%",
     display: "flex",
     flexDirection: "column",
@@ -697,53 +534,48 @@ const styles = {
     flexShrink: 0,
   },
 
-  findingsGrid: {
+  findings: {
     display: "grid",
     gridTemplateColumns:
       "repeat(auto-fit,minmax(220px,1fr))",
-    gap: "15px",
+    gap: 15,
   },
 
   finding: {
     display: "flex",
-    alignItems: "center",
-    gap: "14px",
-    padding: "18px",
+    gap: 12,
+    padding: 18,
     border: "1px solid #e2e8f0",
-    borderRadius: "14px",
+    borderRadius: 14,
   },
 
   findingIcon: {
-    width: "36px",
-    height: "36px",
+    width: 34,
+    height: 34,
     borderRadius: "50%",
+    background: "#ecfdf5",
+    color: "#15803d",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    fontWeight: "800",
+    fontWeight: 800,
     flexShrink: 0,
   },
 
-  findingText: {
-    margin: "5px 0 0",
-    color: "#64748b",
-    fontSize: "13px",
-  },
-
   technical: {
-    marginTop: "30px",
-    padding: "20px",
+    marginTop: 30,
+    padding: 20,
     background: "#f8fafc",
-    borderRadius: "14px",
+    borderRadius: 14,
   },
 
   note: {
-    marginTop: "25px",
-    padding: "16px",
+    marginTop: 25,
+    padding: 16,
     background: "#fff7ed",
     color: "#9a3412",
-    borderRadius: "10px",
-    fontSize: "13px",
+    borderRadius: 10,
+    fontSize: 13,
     lineHeight: 1.6,
   },
 };
