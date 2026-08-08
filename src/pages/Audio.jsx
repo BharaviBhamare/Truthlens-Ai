@@ -103,7 +103,8 @@ function Audio() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/verify-audio",
+        "https://truthlens-ai-backend-ry8y.onrender.com/verify-audio"
+ ",
         {
           method: "POST",
           body: formData,

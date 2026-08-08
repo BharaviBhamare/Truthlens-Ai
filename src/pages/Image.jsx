@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const API = "http://localhost:8000";
+const API = "https://truthlens-ai-backend-ry8y.onrender.com";
 
 function Image() {
   const [file, setFile] = useState(null);
@@ -38,7 +38,7 @@ function Image() {
     try {
       const response = await fetch(`${API}/verify-image`, {
         method: "POST",
-        body: formData,
+        body: formData
       });
 
       if (!response.ok) {
@@ -59,7 +59,7 @@ function Image() {
 
       setError(
         "Unable to connect to the TruthLens backend. " +
-        "Make sure FastAPI is running on port 8000."
+        ""Please check that the TruthLens cloud backend is available.""
       );
     } finally {
       setLoading(false);
@@ -162,7 +162,7 @@ function Image() {
 
               <Info
                 label="Connection"
-                value="FastAPI :8000"
+                value="TruthLens Cloud Backend"
               />
 
               <button
@@ -197,7 +197,7 @@ function Image() {
 
           <p style={{ marginBottom: 0 }}>
             Backend:{" "}
-            <code>http://localhost:8000</code>
+            <code>https://truthlens-ai-backend-ry8y.onrender.com</code>
           </p>
         </div>
       )}
