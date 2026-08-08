@@ -36,8 +36,10 @@ function Image() {
     formData.append("file", file);
 
     try {
-      const response = await fetch(`${API}/verify-image`, {
-        method: "POST",
+      const response = await fetch(
+        "https://truthlens-ai-backend-ry8y.onrender.com/verify-image",
+  {
+    method: "POST",
         body: formData
       });
 
@@ -59,7 +61,7 @@ function Image() {
 
       setError(
         "Unable to connect to the TruthLens backend. " +
-        ""Please check that the TruthLens cloud backend is available.""
+        "Please check that the TruthLens cloud backend is available."
       );
     } finally {
       setLoading(false);
